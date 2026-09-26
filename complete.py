@@ -12,8 +12,8 @@ from pathlib import Path
 # =====================================================
 
 st.set_page_config(
-    page_title="Cars Data Analysis",
-    page_icon="",
+    page_title="Household Power Analysis",
+    page_icon="🏠",
     layout="wide"
 )
 
@@ -38,15 +38,7 @@ h2, h3 {
 
 div.stButton > button {
     border-radius: 8px;
-    border: 1px solid #2874a6;
-    background-color: #2874a6;
-    color: white;
     font-weight: bold;
-}
-
-div.stButton > button:hover {
-    background-color: #1f4e79;
-    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -59,57 +51,63 @@ div.stButton > button:hover {
 @st.cache_data
 def load_data():
 
-    file_path = Path(__file__).resolve().parent / "Cars.csv"
+    file_path = (
+        Path(__file__).resolve().parent
+        / "Household_clean_data.csv"
+    )
 
     if not file_path.exists():
-        st.error(f"Cars.csv not found at: {file_path}")
+        st.error(f"Dataset not found: {file_path}")
         st.stop()
 
-    df = pd.read_csv(file_path)
-
-    # Convert numeric columns
-    numeric_columns = [
-        "Year",
-        "Kilometers_Driven",
-        "Price",
-        "Seats",
-        "No. of Doors"
-    ]
-
-    for column in numeric_columns:
-        if column in df.columns:
-            df[column] = pd.to_numeric(
-                df[column],
-                errors="coerce"
-            )
-
-    # Extract numeric values from text columns
-    for column, new_column in [
-        ("Mileage", "Mileage_value"),
-        ("Engine", "Engine_value"),
-        ("Power", "Power_value")
-    ]:
-
-        if column in df.columns:
-
-            df[new_column] = pd.to_numeric(
-                df[column]
-                .astype(str)
-                .str.extract(r"([-+]?\d*\.?\d+)")[0],
-                errors="coerce"
-            )
-
-    return df
+    return pd.read_csv(file_path)
 
 
 df = load_data()
+
+
+# Convert date-related columns if available
+
+if "Date" in df.columns:
+
+    df["Date"] = pd.to_datetime(
+        df["Date"],
+        errors="coerce"
+    )
+
+    if "Day_Name" not in df.columns:
+        df["Day_Name"] = df["Date"].dt.day_name()
+
+    if "Month_Name" not in df.columns:
+        df["Month_Name"] = df["Date"].dt.month_name()
+
+    if "Year" not in df.columns:
+        df["Year"] = df["Date"].dt.year
+
+
+if "Hours" in df.columns:
+
+    df["Hours"] = pd.to_numeric(
+        df["Hours"],
+        errors="coerce"
+    )
+
+
+numeric_columns = df.select_dtypes(
+    include=np.number
+).columns.tolist()
+
+
+categorical_columns = df.select_dtypes(
+    exclude=np.number
+).columns.tolist()
 
 
 # =====================================================
 # SIDEBAR NAVIGATION
 # =====================================================
 
-st.sidebar.title("Cars Analysis")
+st.sidebar.title("🏠 Household Analysis")
 
 page = st.sidebar.radio(
     "Select Page",
@@ -127,22 +125,22 @@ page = st.sidebar.radio(
 
 if page == "Introduction":
 
-    st.title("Cars Data Analysis Dashboard")
+    st.title("🏠 Household Power Consumption Analysis")
 
     st.subheader("Introduction and Data Information")
 
     st.write("""
-    This application analyzes a car dataset using
-    Python, Pandas, NumPy, Seaborn, and Matplotlib.
+    This dataset contains household electricity
+    consumption and electrical measurements.
 
-    The dataset contains information about cars,
-    including their name, year, fuel type, transmission,
-    engine, power, mileage, and price.
+    The data includes active power, reactive power,
+    voltage, intensity, and sub-metering values.
     """)
 
     st.divider()
 
-    # Dataset metrics
+    st.subheader("📊 Dataset Overview")
+
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -165,14 +163,14 @@ if page == "Introduction":
 
     st.divider()
 
-    st.subheader("Preview of Dataset")
+    st.subheader("👀 Dataset Preview")
 
     st.dataframe(
         df.head(10),
         use_container_width=True
     )
 
-    st.subheader("Dataset Information")
+    st.subheader("📋 Dataset Information")
 
     info_df = pd.DataFrame({
         "Column Name": df.columns,
@@ -186,26 +184,18 @@ if page == "Introduction":
         use_container_width=True
     )
 
-    st.subheader("Statistical Summary")
+    st.subheader("📈 Statistical Summary")
 
     st.dataframe(
-        df.describe(include="all").transpose(),
+        df.describe().transpose(),
         use_container_width=True
     )
 
-    st.subheader("Numerical Columns")
-
-    numeric_columns = df.select_dtypes(
-        include=np.number
-    ).columns.tolist()
+    st.subheader("🔢 Numerical Columns")
 
     st.write(numeric_columns)
 
-    st.subheader("Categorical Columns")
-
-    categorical_columns = df.select_dtypes(
-        exclude=np.number
-    ).columns.tolist()
+    st.subheader("🔤 Categorical Columns")
 
     st.write(categorical_columns)
 
@@ -216,62 +206,35 @@ if page == "Introduction":
 
 elif page == "EDA Analysis":
 
-    st.title("Exploratory Data Analysis")
+    st.title("📊 Exploratory Data Analysis")
 
     st.write(
-        "Choose an analysis type using the buttons below."
+        "Explore the dataset using different visualizations."
     )
 
-    numeric_columns = df.select_dtypes(
-        include=np.number
-    ).columns.tolist()
-
-    categorical_columns = df.select_dtypes(
-        exclude=np.number
-    ).columns.tolist()
-
-    if "analysis_type" not in st.session_state:
-        st.session_state.analysis_type = "Univariate"
-
-    # Analysis buttons
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button(
+    analysis_type = st.radio(
+        "Select Analysis Type",
+        [
             "Univariate Analysis",
-            use_container_width=True
-        ):
-            st.session_state.analysis_type = "Univariate"
-
-    with col2:
-        if st.button(
             "Bivariate Analysis",
-            use_container_width=True
-        ):
-            st.session_state.analysis_type = "Bivariate"
-
-    with col3:
-        if st.button(
-            "Multivariate Analysis",
-            use_container_width=True
-        ):
-            st.session_state.analysis_type = "Multivariate"
+            "Multivariate Analysis"
+        ],
+        horizontal=True
+    )
 
     st.divider()
-
-    analysis_type = st.session_state.analysis_type
-
-    st.subheader(f"{analysis_type} Analysis")
 
 
     # =================================================
     # UNIVARIATE ANALYSIS
     # =================================================
 
-    if analysis_type == "Univariate":
+    if analysis_type == "Univariate Analysis":
+
+        st.subheader("Univariate Analysis")
 
         st.info(
-            "Univariate analysis studies one variable."
+            "Analysis of one variable at a time."
         )
 
         plot_type = st.selectbox(
@@ -281,19 +244,19 @@ elif page == "EDA Analysis":
                 "Box Plot",
                 "Count Plot",
                 "Value Counts"
-            ],
-            key="univariate_plot"
+            ]
         )
 
         if plot_type == "Histogram":
 
             column = st.selectbox(
                 "Select Numerical Column",
-                numeric_columns,
-                key="hist_column"
+                numeric_columns
             )
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(
+                figsize=(10, 5)
+            )
 
             sns.histplot(
                 data=df,
@@ -302,7 +265,9 @@ elif page == "EDA Analysis":
                 ax=ax
             )
 
-            ax.set_title(f"Distribution of {column}")
+            ax.set_title(
+                f"Distribution of {column}"
+            )
 
             st.pyplot(fig)
             plt.close(fig)
@@ -312,11 +277,12 @@ elif page == "EDA Analysis":
 
             column = st.selectbox(
                 "Select Numerical Column",
-                numeric_columns,
-                key="box_column"
+                numeric_columns
             )
 
-            fig, ax = plt.subplots(figsize=(10, 4))
+            fig, ax = plt.subplots(
+                figsize=(10, 5)
+            )
 
             sns.boxplot(
                 data=df,
@@ -324,7 +290,9 @@ elif page == "EDA Analysis":
                 ax=ax
             )
 
-            ax.set_title(f"Box Plot of {column}")
+            ax.set_title(
+                f"Box Plot of {column}"
+            )
 
             st.pyplot(fig)
             plt.close(fig)
@@ -332,54 +300,67 @@ elif page == "EDA Analysis":
 
         elif plot_type == "Count Plot":
 
-            column = st.selectbox(
-                "Select Categorical Column",
-                categorical_columns,
-                key="count_column"
-            )
+            if categorical_columns:
 
-            top_values = (
-                df[column]
-                .value_counts()
-                .head(15)
-                .index
-            )
+                column = st.selectbox(
+                    "Select Categorical Column",
+                    categorical_columns
+                )
 
-            filtered_df = df[
-                df[column].isin(top_values)
-            ]
+                top_values = (
+                    df[column]
+                    .value_counts()
+                    .head(15)
+                    .index
+                )
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+                filtered_df = df[
+                    df[column].isin(top_values)
+                ]
 
-            sns.countplot(
-                data=filtered_df,
-                y=column,
-                order=filtered_df[column].value_counts().index,
-                ax=ax
-            )
+                fig, ax = plt.subplots(
+                    figsize=(10, 5)
+                )
 
-            ax.set_title(f"Count Plot of {column}")
+                sns.countplot(
+                    data=filtered_df,
+                    y=column,
+                    order=filtered_df[column]
+                    .value_counts()
+                    .index,
+                    ax=ax
+                )
 
-            st.pyplot(fig)
-            plt.close(fig)
+                ax.set_title(
+                    f"Count Plot of {column}"
+                )
+
+                st.pyplot(fig)
+                plt.close(fig)
+
+            else:
+
+                st.warning(
+                    "No categorical columns found."
+                )
 
 
         elif plot_type == "Value Counts":
 
             column = st.selectbox(
                 "Select Column",
-                df.columns.tolist(),
-                key="value_column"
+                df.columns.tolist()
             )
 
-            value_counts = (
+            counts = (
                 df[column]
                 .value_counts()
                 .head(20)
+                .rename("Count")
             )
 
             st.dataframe(
-                value_counts.rename("Count"),
+                counts,
                 use_container_width=True
             )
 
@@ -388,10 +369,12 @@ elif page == "EDA Analysis":
     # BIVARIATE ANALYSIS
     # =================================================
 
-    elif analysis_type == "Bivariate":
+    elif analysis_type == "Bivariate Analysis":
+
+        st.subheader("Bivariate Analysis")
 
         st.info(
-            "Bivariate analysis studies two variables."
+            "Analysis of the relationship between two variables."
         )
 
         plot_type = st.selectbox(
@@ -400,29 +383,31 @@ elif page == "EDA Analysis":
                 "Scatter Plot",
                 "Bar Plot",
                 "Box Plot by Category"
-            ],
-            key="bivariate_plot"
+            ]
         )
+
 
         if plot_type == "Scatter Plot":
 
             col1, col2 = st.columns(2)
 
             with col1:
+
                 x_column = st.selectbox(
                     "Select X-Axis",
-                    numeric_columns,
-                    key="x_column"
+                    numeric_columns
                 )
 
             with col2:
+
                 y_column = st.selectbox(
                     "Select Y-Axis",
-                    numeric_columns,
-                    key="y_column"
+                    numeric_columns
                 )
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(
+                figsize=(10, 5)
+            )
 
             sns.scatterplot(
                 data=df,
@@ -441,99 +426,116 @@ elif page == "EDA Analysis":
 
         elif plot_type == "Bar Plot":
 
-            category_column = st.selectbox(
-                "Select Category Column",
-                categorical_columns,
-                key="bar_category"
-            )
+            if categorical_columns:
 
-            value_column = st.selectbox(
-                "Select Numerical Column",
-                numeric_columns,
-                key="bar_value"
-            )
+                category_column = st.selectbox(
+                    "Select Category Column",
+                    categorical_columns
+                )
 
-            grouped_df = (
-                df.groupby(category_column)[value_column]
-                .mean()
-                .sort_values(ascending=False)
-                .head(15)
-            )
+                value_column = st.selectbox(
+                    "Select Numerical Column",
+                    numeric_columns
+                )
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+                grouped_df = (
+                    df.groupby(category_column)[value_column]
+                    .mean()
+                    .sort_values(ascending=False)
+                    .head(15)
+                )
 
-            grouped_df.plot(
-                kind="bar",
-                ax=ax
-            )
+                fig, ax = plt.subplots(
+                    figsize=(10, 5)
+                )
 
-            ax.set_title(
-                f"Average {value_column} by {category_column}"
-            )
+                grouped_df.plot(
+                    kind="bar",
+                    ax=ax
+                )
 
-            ax.set_xlabel(category_column)
-            ax.set_ylabel(f"Average {value_column}")
+                ax.set_title(
+                    f"Average {value_column} "
+                    f"by {category_column}"
+                )
 
-            plt.xticks(rotation=45)
-            plt.tight_layout()
+                plt.xticks(rotation=45)
+                plt.tight_layout()
 
-            st.pyplot(fig)
-            plt.close(fig)
+                st.pyplot(fig)
+                plt.close(fig)
+
+            else:
+
+                st.warning(
+                    "No categorical columns found."
+                )
 
 
         elif plot_type == "Box Plot by Category":
 
-            category_column = st.selectbox(
-                "Select Category Column",
-                categorical_columns,
-                key="category_box"
-            )
+            if categorical_columns:
 
-            value_column = st.selectbox(
-                "Select Numerical Column",
-                numeric_columns,
-                key="category_value"
-            )
+                category_column = st.selectbox(
+                    "Select Category Column",
+                    categorical_columns
+                )
 
-            top_categories = (
-                df[category_column]
-                .value_counts()
-                .head(10)
-                .index
-            )
+                value_column = st.selectbox(
+                    "Select Numerical Column",
+                    numeric_columns
+                )
 
-            filtered_df = df[
-                df[category_column].isin(top_categories)
-            ]
+                top_categories = (
+                    df[category_column]
+                    .value_counts()
+                    .head(10)
+                    .index
+                )
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+                filtered_df = df[
+                    df[category_column]
+                    .isin(top_categories)
+                ]
 
-            sns.boxplot(
-                data=filtered_df,
-                x=category_column,
-                y=value_column,
-                ax=ax
-            )
+                fig, ax = plt.subplots(
+                    figsize=(10, 5)
+                )
 
-            ax.set_title(
-                f"{value_column} by {category_column}"
-            )
+                sns.boxplot(
+                    data=filtered_df,
+                    x=category_column,
+                    y=value_column,
+                    ax=ax
+                )
 
-            plt.xticks(rotation=45)
-            plt.tight_layout()
+                ax.set_title(
+                    f"{value_column} by {category_column}"
+                )
 
-            st.pyplot(fig)
-            plt.close(fig)
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+
+                st.pyplot(fig)
+                plt.close(fig)
+
+            else:
+
+                st.warning(
+                    "No categorical columns found."
+                )
 
 
     # =================================================
     # MULTIVARIATE ANALYSIS
     # =================================================
 
-    elif analysis_type == "Multivariate":
+    elif analysis_type == "Multivariate Analysis":
+
+        st.subheader("Multivariate Analysis")
 
         st.info(
-            "Multivariate analysis studies three or more variables."
+            "Analysis of three or more variables."
         )
 
         plot_type = st.selectbox(
@@ -542,15 +544,17 @@ elif page == "EDA Analysis":
                 "Correlation Heatmap",
                 "Pair Plot",
                 "Grouped Bar Plot"
-            ],
-            key="multivariate_plot"
+            ]
         )
+
 
         if plot_type == "Correlation Heatmap":
 
             correlation = df[numeric_columns].corr()
 
-            fig, ax = plt.subplots(figsize=(12, 7))
+            fig, ax = plt.subplots(
+                figsize=(12, 7)
+            )
 
             sns.heatmap(
                 correlation,
@@ -560,7 +564,9 @@ elif page == "EDA Analysis":
                 ax=ax
             )
 
-            ax.set_title("Correlation Heatmap")
+            ax.set_title(
+                "Correlation Heatmap"
+            )
 
             st.pyplot(fig)
             plt.close(fig)
@@ -571,27 +577,29 @@ elif page == "EDA Analysis":
             selected_columns = st.multiselect(
                 "Select Numerical Columns",
                 numeric_columns,
-                default=numeric_columns[:3],
-                key="pair_columns"
+                default=numeric_columns[:3]
             )
 
             if len(selected_columns) >= 2:
 
-                pair_df = df[
-                    selected_columns
-                ].dropna()
-
-                pair_df = pair_df.sample(
-                    min(500, len(pair_df)),
-                    random_state=42
+                pair_df = (
+                    df[selected_columns]
+                    .dropna()
+                    .sample(
+                        min(500, len(df)),
+                        random_state=42
+                    )
                 )
 
-                pair_plot = sns.pairplot(pair_df)
+                pair_plot = sns.pairplot(
+                    pair_df
+                )
 
                 st.pyplot(pair_plot.figure)
                 plt.close(pair_plot.figure)
 
             else:
+
                 st.warning(
                     "Select at least two numerical columns."
                 )
@@ -599,34 +607,34 @@ elif page == "EDA Analysis":
 
         elif plot_type == "Grouped Bar Plot":
 
-            category_column = st.selectbox(
-                "Select Category Column",
-                categorical_columns,
-                key="group_category"
-            )
+            if len(categorical_columns) >= 2:
 
-            value_column = st.selectbox(
-                "Select Numerical Column",
-                numeric_columns,
-                key="group_value"
-            )
+                category_column = st.selectbox(
+                    "Select First Category",
+                    categorical_columns
+                )
 
-            remaining_categories = [
-                column for column in categorical_columns
-                if column != category_column
-            ]
-
-            if remaining_categories:
+                remaining_categories = [
+                    col for col in categorical_columns
+                    if col != category_column
+                ]
 
                 second_category = st.selectbox(
                     "Select Second Category",
-                    remaining_categories,
-                    key="second_category"
+                    remaining_categories
+                )
+
+                value_column = st.selectbox(
+                    "Select Numerical Column",
+                    numeric_columns
                 )
 
                 grouped_df = (
                     df.groupby(
-                        [category_column, second_category]
+                        [
+                            category_column,
+                            second_category
+                        ]
                     )[value_column]
                     .mean()
                     .reset_index()
@@ -644,7 +652,9 @@ elif page == "EDA Analysis":
                     .isin(top_categories)
                 ]
 
-                fig, ax = plt.subplots(figsize=(12, 6))
+                fig, ax = plt.subplots(
+                    figsize=(12, 6)
+                )
 
                 sns.barplot(
                     data=grouped_df,
@@ -655,8 +665,7 @@ elif page == "EDA Analysis":
                 )
 
                 ax.set_title(
-                    f"Average {value_column} by "
-                    f"{category_column} and {second_category}"
+                    f"Average {value_column} by categories"
                 )
 
                 plt.xticks(rotation=45)
@@ -666,8 +675,10 @@ elif page == "EDA Analysis":
                 plt.close(fig)
 
             else:
+
                 st.warning(
-                    "At least two categorical columns are required."
+                    "At least two categorical columns "
+                    "are required."
                 )
 
 
@@ -677,107 +688,136 @@ elif page == "EDA Analysis":
 
 elif page == "Conclusions":
 
-    st.title("Conclusions and Findings")
+    st.title("📌 Conclusions and Findings")
 
     st.write("""
-    This page presents a summary of the car dataset
-    based on numerical and categorical analysis.
+    This page summarizes the household electricity
+    consumption dataset.
     """)
 
     st.divider()
 
-    # Numerical summary
-    st.subheader("Numerical Findings")
+    st.subheader("📈 Numerical Summary")
 
-    numeric_columns = df.select_dtypes(
-        include=np.number
-    ).columns.tolist()
+    st.dataframe(
+        df[numeric_columns]
+        .describe()
+        .transpose(),
+        use_container_width=True
+    )
 
-    if numeric_columns:
 
-        summary = df[
-            numeric_columns
-        ].describe().transpose()
+    # Average active power by hour
 
-        st.dataframe(
-            summary,
-            use_container_width=True
+    if (
+        "Hours" in df.columns
+        and "Global_active_power" in df.columns
+    ):
+
+        st.subheader(
+            "Average Active Power by Hour"
         )
 
+        hourly_power = (
+            df.groupby("Hours")["Global_active_power"]
+            .mean()
+            .sort_values(ascending=False)
+        )
 
-    # Most common fuel type
-    if "Fuel_Type" in df.columns:
+        if not hourly_power.empty:
 
-        st.subheader("Most Common Fuel Type")
-
-        fuel_counts = df["Fuel_Type"].value_counts()
-
-        if not fuel_counts.empty:
+            highest_hour = hourly_power.index[0]
+            highest_value = hourly_power.iloc[0]
 
             st.write(
-                f"Most common fuel type: "
-                f"**{fuel_counts.index[0]}**"
+                f"Highest average active power hour: "
+                f"**{highest_hour}**"
+            )
+
+            st.write(
+                f"Average active power: "
+                f"**{highest_value:.2f}**"
             )
 
 
-    # Transmission distribution
-    if "Transmission" in df.columns:
+    # Total metering analysis
 
-        st.subheader("Transmission Distribution")
+    if "Total_metering" in df.columns:
 
-        transmission_counts = (
-            df["Transmission"].value_counts()
+        st.subheader(
+            "⚡ Total Metering Analysis"
         )
 
-        st.dataframe(
-            transmission_counts.rename("Count"),
-            use_container_width=True
+        average_metering = (
+            df["Total_metering"].mean()
         )
 
+        maximum_metering = (
+            df["Total_metering"].max()
+        )
 
-    # Price analysis
-    if "Price" in df.columns:
-
-        st.subheader("Price Analysis")
-
-        average_price = df["Price"].mean()
-        maximum_price = df["Price"].max()
-        minimum_price = df["Price"].min()
-
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
 
         with col1:
+
             st.metric(
-                "Average Price",
-                f"{average_price:.2f}"
+                "Average Total Metering",
+                f"{average_metering:.2f}"
             )
 
         with col2:
+
             st.metric(
-                "Maximum Price",
-                f"{maximum_price:.2f}"
+                "Maximum Total Metering",
+                f"{maximum_metering:.2f}"
             )
 
-        with col3:
-            st.metric(
-                "Minimum Price",
-                f"{minimum_price:.2f}"
-            )
+
+    # Voltage analysis
+
+    if "Voltage" in df.columns:
+
+        st.subheader(
+            "🔌 Voltage Analysis"
+        )
+
+        st.write(
+            f"Average voltage: "
+            f"**{df['Voltage'].mean():.2f}**"
+        )
+
+        st.write(
+            f"Minimum voltage: "
+            f"**{df['Voltage'].min():.2f}**"
+        )
+
+        st.write(
+            f"Maximum voltage: "
+            f"**{df['Voltage'].max():.2f}**"
+        )
 
 
     # Final conclusion
-    st.subheader("Final Conclusion")
+
+    st.subheader("📝 Final Conclusion")
 
     st.write("""
-    The exploratory data analysis helps us understand
-    the distribution of car prices, fuel types,
-    transmission types, engine characteristics,
-    and relationships between numerical variables.
+    The analysis helps us understand household
+    electricity consumption patterns.
 
-    The visualizations help identify patterns,
-    trends, and possible outliers in the dataset.
+    The EDA visualizations can be used to examine:
+
+    1. Distributions of electricity measurements.
+    2. Changes in power consumption across hours.
+    3. Differences in consumption across days and months.
+    4. Relationships between electrical variables.
+    5. Correlations among numerical features.
+
+    These findings can help identify patterns
+    and possible variations in household
+    power consumption.
     """)
 
     st.success(
-        "The car dataset analysis has been completed."
+        "Household power consumption analysis completed."
     )

@@ -2,7 +2,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="Cars Data Analysis",
+    page_title="Household Power Analysis",
     page_icon="",
     layout="wide"
 )
@@ -17,41 +17,30 @@ h1 {
     color: #1f4e79;
 }
 
-h2 {
+h2, h3 {
     color: #2874a6;
 }
 
 div.stButton > button {
     border-radius: 8px;
-    border: 1px solid #2874a6;
-    background-color: #2874a6;
-    color: white;
     font-weight: bold;
-}
-
-div.stButton > button:hover {
-    background-color: #1f4e79;
-    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Cars Data Analysis Dashboard")
+st.title("Household Power Consumption Analysis")
 
-st.subheader("Welcome to the Car Dataset Analysis Project")
+st.subheader("Welcome to the Data Analysis Dashboard")
 
-st.write(
-    """
-    This application analyzes car data using Python,
-    Pandas, NumPy, Seaborn, and Matplotlib.
+st.write("""
+This application analyzes household electricity
+consumption using Pandas, NumPy, Seaborn,
+and Matplotlib.
 
-    Use the sidebar to navigate through:
-    - Introduction and data information
-    - Exploratory Data Analysis (EDA)
-    - Conclusions and findings
-    """
-)
+Use the sidebar to explore:
+- Introduction and data information
+- Exploratory Data Analysis
+- Conclusions and findings
+""")
 
-st.info(
-    "Select a page from the sidebar to explore the dataset."
-)
+st.info("Select a page from the sidebar.")

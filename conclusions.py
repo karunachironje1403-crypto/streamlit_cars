@@ -1,9 +1,8 @@
 
 import streamlit as st
-import numpy as np
 import pandas as pd
-
-from utils.data_loader import load_data
+import numpy as np
+from pathlib import Path
 
 st.set_page_config(
     page_title="Conclusions",
@@ -12,102 +11,132 @@ st.set_page_config(
 
 st.title("Conclusions and Findings")
 
+
+@st.cache_data
+def load_data():
+
+    file_path = (
+        Path(__file__).resolve().parent.parent
+        / "Household_clean_data.csv"
+    )
+
+    return pd.read_csv(file_path)
+
+
 df = load_data()
 
-st.write(
-    """
-    This page presents a summary of the car dataset
-    based on numerical and categorical analysis.
-    """
-)
+
+st.write("""
+This page summarizes the household electricity
+consumption dataset.
+""")
+
 
 st.divider()
 
+
 # Numerical summary
-st.subheader("Numerical Findings")
+st.subheader("Numerical Summary")
 
 numeric_columns = df.select_dtypes(
     include=np.number
 ).columns.tolist()
 
-if numeric_columns:
+st.dataframe(
+    df[numeric_columns].describe().transpose(),
+    use_container_width=True
+)
 
-    summary = df[numeric_columns].describe().transpose()
 
-    st.dataframe(
-        summary,
-        use_container_width=True
+# Highest average active power by hour
+if "Hours" in df.columns and "Global_active_power" in df.columns:
+
+    st.subheader("Average Active Power by Hour")
+
+    hourly_power = (
+        df.groupby("Hours")["Global_active_power"]
+        .mean()
+        .sort_values(ascending=False)
     )
 
-# Most common fuel type
-if "Fuel_Type" in df.columns:
+    if not hourly_power.empty:
 
-    st.subheader("Most Common Fuel Type")
+        highest_hour = hourly_power.index[0]
+        highest_value = hourly_power.iloc[0]
 
-    fuel_counts = df["Fuel_Type"].value_counts()
-
-    if not fuel_counts.empty:
         st.write(
-            f"Most common fuel type: "
-            f"**{fuel_counts.index[0]}**"
+            f"Highest average active power hour: "
+            f"**{highest_hour}**"
         )
 
-# Transmission distribution
-if "Transmission" in df.columns:
+        st.write(
+            f"Average active power: **{highest_value:.2f}**"
+        )
 
-    st.subheader("Transmission Distribution")
 
-    transmission_counts = df["Transmission"].value_counts()
+# Total metering analysis
+if "Total_metering" in df.columns:
 
-    st.dataframe(
-        transmission_counts.rename("Count"),
-        use_container_width=True
-    )
+    st.subheader("Total Metering Analysis")
 
-# Price analysis
-if "Price" in df.columns:
+    average_metering = df["Total_metering"].mean()
+    maximum_metering = df["Total_metering"].max()
 
-    st.subheader("Price Analysis")
-
-    average_price = df["Price"].mean()
-    maximum_price = df["Price"].max()
-    minimum_price = df["Price"].min()
-
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         st.metric(
-            "Average Price",
-            f"{average_price:.2f}"
+            "Average Total Metering",
+            f"{average_metering:.2f}"
         )
 
     with col2:
         st.metric(
-            "Maximum Price",
-            f"{maximum_price:.2f}"
+            "Maximum Total Metering",
+            f"{maximum_metering:.2f}"
         )
 
-    with col3:
-        st.metric(
-            "Minimum Price",
-            f"{minimum_price:.2f}"
-        )
 
-# Final conclusion
+# Voltage analysis
+if "Voltage" in df.columns:
+
+    st.subheader("Voltage Analysis")
+
+    st.write(
+        f"Average voltage: "
+        f"**{df['Voltage'].mean():.2f}**"
+    )
+
+    st.write(
+        f"Minimum voltage: "
+        f"**{df['Voltage'].min():.2f}**"
+    )
+
+    st.write(
+        f"Maximum voltage: "
+        f"**{df['Voltage'].max():.2f}**"
+    )
+
+
+# Conclusion
 st.subheader("Final Conclusion")
 
-st.write(
-    """
-    The exploratory data analysis helps us understand
-    the distribution of car prices, fuel types,
-    transmission types, engine characteristics,
-    and relationships between numerical variables.
+st.write("""
+The analysis helps us understand household electricity
+consumption patterns.
 
-    The visualizations make it easier to identify
-    patterns, trends, and possible outliers in the dataset.
-    """
-)
+The EDA visualizations can be used to examine:
+
+1. Distributions of electricity measurements.
+2. Changes in power consumption across hours.
+3. Differences in consumption across days and months.
+4. Relationships between electrical variables.
+5. Correlations among numerical features.
+
+These findings can help identify patterns and
+possible variations in household power consumption.
+""")
 
 st.success(
-    "The car dataset analysis has been completed."
+    "Household power consumption analysis completed."
 )
